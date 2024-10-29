@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Court Recording Software</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/wavesurfer.js"></script>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html-docx/0.5.2/html-docx.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+</head>
+<body>
+  <!-- Add the logo here -->
+  <div class="sidebar d-flex flex-column">
+    <!-- Logo at the top -->
+    <div class="logo-container text-center mb-4">
+      <img src="{{ url_for('static', filename='./images/logojsc.png') }}" alt="Court Recording Logo" class="logo img-fluid">
+    </div>
+    
+<!-- Navigation Links -->
+<nav class="nav flex-column flex-grow-1">
+  <a class="nav-link active" href="courtrec">
+    <i class="fas fa-home me-2"></i>Dashboard
+  </a>
+  <a class="nav-link" href="recordings">
+    <i class="fas fa-microphone me-2"></i>My Recordings
+  </a>
+  <a class="nav-link" href="#">
+    <i class="fas fa-archive me-2"></i>Archives
+  </a>
+
+  <!-- Settings Menu with Collapsing Submenu -->
+  <a class="nav-link" data-bs-toggle="collapse" href="#settingsMenu" role="button" aria-expanded="false" aria-controls="settingsMenu">
+    <i class="fas fa-cog me-2"></i>Settings
+    <i class="fas fa-chevron-down float-end"></i>
+  </a>
+  <div class="collapse" id="settingsMenu">
+    <a class="nav-link ms-3" href="setup-court">
+      <i class="fas fa-gavel me-2"></i>Setup Court
+    </a>
+    <a class="nav-link ms-3" href="audio-config">
+      <i class="fas fa-volume-up me-2"></i>Audio Configurations
+    </a>
+    <a class="nav-link ms-3" href="backup">
+      <i class="fas fa-database me-2"></i>Backup
+    </a>
+  </div>
+</nav>
+  
+    <!-- Testimony logo at the bottom -->
+    <div class="testimony-logo mt-auto text-center">
+      <img src="{{ url_for('static', filename='/images/testimony.png') }}" alt="testimony logo" class="logo img-fluid">
+    </div>
+  </div>
+
+  <div class="main-content">
+
+
+    <div class="recordings-table">
+     
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 id="recent-recordings" class="mb-0">My Recordings</h5>
+        <div class="d-flex gap-2">
+            <select id="recordingsPerPage" class="form-select form-select-sm" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="all">All</option>
+            </select>
+            <button class="btn btn-success btn-sm" id="filterBtn">
+              <i class="fas fa-filter me-2"></i>Filter
+            </button>
+            <button class="btn btn-success btn-sm">
+            <i class="fas fa-download me-2"></i>Export
+          </button>
+        </div>
+    </div>
+
+      <!-- Search Bar -->
+      <div class="row">
+        <div class="col-md-4">
+          <div class="input-group">
+            <input type="date" id="fromDate" class="form-control" placeholder="From date">
+            <input type="date" id="toDate" class="form-control" placeholder="To date">
+            <button id="goButton" class="btn btn-success">Go</button>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <input type="text" id="searchInput" class="form-control" placeholder="Search recordings...">
+        </div>
+      
+        </div>
+      
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Case Details</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Size</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+ 
+          <tbody id="recordingsTableBody">
+            
+            {% for recording in case_recordings %}
+            
+            <tr class="recording-row" data-bs-toggle="modal" data-bs-target="#recordingModal" onclick="populateModal(
+              '{{ recording[1] }}',  // case_name
+              '{{ recording[4] }}',  // date_time
+              '{{ recording[6] }}',  // counsel
+              '{{ recording[8] }}',  // judge
+              '{{ recording[11] }}', // duration
+              '{{ recording[13] }}', // file_size
+              '{{ recording[14] }}',  // notes
+              '{{ recording[12] }}'  // annotations
+            )">
+              <td>{{ recording[4] }}</td>
+              <td>{{ recording[1] }}</td>
+              <td>{{ recording[11] }}</td>
+              <td><span class="status-badge bg-success text-white">Completed</span></td>
+              <td>{{ recording[14] }}</td>
+              <td>
+                <div class="recording-actions">
+                  <button class="action-btn" onclick="playRecording('${recordingData.caseNumber}')">
+                    <i class="fas fa-play"></i>
+                  </button>
+                  <button class="action-btn" onclick="downloadRecording('${recordingData.caseNumber}')">
+                    <i class="fas fa-download"></i>
+                  </button>
+                  <button class="action-btn" onclick="editRecording('${recordingData.caseNumber}')">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="action-btn text-danger" onclick="deleteRecording('${recordingData.caseNumber}')">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="pagination-info">
+            Showing <span id="startRecord">1</span> to <span id="endRecord">10</span> of <span id="totalRecords">0</span> entries
+        </div>
+        <nav aria-label="Recordings pagination">
+            <ul class="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    </div>
+  </div>
+<!-- Recording Modal -->
+<div class="modal fade" id="recordingModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Case #001 - Theft</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-4">
+          <!-- Left Column - Audio Player and Case Details -->
+          <div class="col-md-4">
+            <!-- Audio Player Card -->
+            <div class="card mb-4">
+              <div class="card-header">
+                <h6 class="mb-0">Audio Player</h6>
+              </div>
+              <div class="card-body">
+                <div id="waveform" class="mb-3"></div>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <button id="playPauseBtn" class="btn">
+                    <i class="fas fa-play"></i>
+                  </button>
+                  <button id="stopBtn" class="btn">
+                    <i class="fas fa-stop"></i>
+                  </button>
+                  <span id="timeInfo" class="text-muted">00:00 / 30:00</span>
+                </div>
+                <input type="range" id="audioSlider" class="form-range" min="0" max="100" value="0">
+                <div class="d-flex justify-content-between mt-3">
+                  <button class="btn btn-sm btn-success">
+                    <small>Add Timestamp</small>
+                  </button>
+                  <button class="btn btn-sm btn-success">
+                    <small>Download Audio</small>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Case Details Card -->
+            <div class="card">
+              <div class="card-header">
+                <h6 class="mb-0">Case Details</h6>
+              </div>
+              <div class="card-body">
+                <dl class="case-details mb-0">
+                  <dt>Date</dt>
+                  <dd id="modalDate">2024-10-01</dd>
+                
+                  <dt>Time</dt>
+                  <dd id="modalTime">10:00 AM</dd>
+                
+                  <dt>Duration</dt>
+                  <dd id="modalDuration">00:30:00</dd>
+                
+                  <dt>Status</dt>
+                  <dd id="modalStatus"><span class="status-badge completed">Completed</span></dd>
+                
+                  <dt>File Size</dt>
+                  <dd id="modalFileSize">15 MB</dd>
+                
+                  <dt>Judge</dt>
+                  <dd id="modalJudge">Hon. Sarah Johnson</dd>
+                
+                  <dt>Courtroom</dt>
+                  <dd id="modalCourtroom">4B</dd>
+                </dl>
+                
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column - Transcript and Annotations -->
+          <div class="col-md-8">
+            <!-- Transcript Card -->
+            <div class="card mb-4">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Transcript</h6>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-success" id="autotrans">Auto-Transcribe</button>
+                  <button class="btn btn-sm btn-warning" id="exportWordBtn">Export to Word</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="transcriptEditor" class="quill-editor"></div>
+              </div>
+              <!-- Save button with an icon, initially hidden -->
+<button id="saveButton" class="btn btn-success" style="display: none; margin-top: 10px;">
+  <i class="fas fa-save"></i> Save
+</button>
+            </div>
+
+           <!-- Annotations Card -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h6 class="mb-0">Annotations</h6>
+    <button class="btn btn-sm btn-success" id="addAnnotationBtn">Add Annotation</button>
+  </div>
+  <div class="card-body" id="annotationsList">
+    <!-- Dynamic annotations will be added here -->
+  </div>
+</div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+  
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+function populateModal(caseName, dateTime, counsel, judge, duration, fileSize, notes, annotations) {
+  // Update modal title
+  document.querySelector("#recordingModal .modal-title").innerText = `Case #${caseName} - ${caseName}`;
+
+  // Update audio player details
+  document.getElementById("timeInfo").innerText = dateTime;
+
+  // Update case details by targeting each element by ID
+  document.getElementById("modalDate").innerText = dateTime;
+  document.getElementById("modalTime").innerText = dateTime; // Adjust if you have a separate time field
+  document.getElementById("modalDuration").innerText = duration;
+  document.getElementById("modalStatus").innerText = "Completed";
+  document.getElementById("modalFileSize").innerText = fileSize;
+  document.getElementById("modalJudge").innerText = judge;
+  document.getElementById("modalCourtroom").innerText = "4B"; // Example courtroom value
+
+  // Populate annotations and transcript if available
+  // Add logic for dynamically adding transcript and annotations here if needed
+
+  // Convert annotations string back to an array
+  const annotationsArray = JSON.parse(annotations);
+  console.log(annotationsArray)
+
+ // Get the container for annotations
+ const annotationsList = document.getElementById("annotationsList");
+
+// Clear any previous annotations
+annotationsList.innerHTML = "";
+
+// Loop through annotations and add each as a new element
+annotationsArray.forEach(annotation => {
+  const annotationItem = document.createElement("div");
+  annotationItem.classList.add("annotation-item");
+
+  annotationItem.innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="timestamp-marker">${annotation.timestamp}</span>
+      <div>
+        <button class="btn btn-sm btn-success me-1">Edit</button>
+        <button class="btn btn-sm btn-success">Delete</button>
+      </div>
+    </div>
+    <p class="mb-0">${annotation.text}</p>
+  `;
+
+  annotationsList.appendChild(annotationItem);
+});
+}
+
+
+
+    // Dynamic search function
+    document.getElementById('searchInput').addEventListener('input', function() {
+      const searchQuery = this.value.toLowerCase();
+      const tableRows = document.querySelectorAll('#recordingsTableBody tr');
+
+      tableRows.forEach(row => {
+        const caseDetails = row.cells[1].textContent.toLowerCase();
+        if (caseDetails.includes(searchQuery)) {
+          row.style.display = ''; // Show row if it matches
+        } else {
+          row.style.display = 'none'; // Hide row if it doesn't match
+        }
+      });
+    });
+  </script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+  // Initialize WaveSurfer for waveform visualization
+  const wavesurfer = WaveSurfer.create({
+    container: '#waveform',
+    waveColor: 'violet',
+    progressColor: 'purple',
+    backend: 'MediaElement'
+  });
+
+  // Load the audio file
+  wavesurfer.load('path_to_audio_file.mp3');
+
+  // Play/Pause Button
+  const playPauseBtn = document.getElementById("playPauseBtn");
+  playPauseBtn.addEventListener("click", function () {
+    if (wavesurfer.isPlaying()) {
+      wavesurfer.pause();
+      playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    } else {
+      wavesurfer.play();
+      playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    }
+  });
+
+  // Stop Button
+  const stopBtn = document.getElementById("stopBtn");
+  stopBtn.addEventListener("click", function () {
+    wavesurfer.stop();
+    playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+  });
+
+  // Update the slider with the waveform's progress
+  wavesurfer.on('audioprocess', function () {
+    const currentTime = wavesurfer.getCurrentTime();
+    document.getElementById('timeInfo').innerText = formatTime(currentTime) + ' / 30:00';
+  });
+
+  function formatTime(time) {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  }
+
+  // Rich Text Editor Initialization using Quill
+  var quill = new Quill('#transcriptEditor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'header': 1 }, { 'header': 2 }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
+        [{ 'align': [] }],
+        ['clean']
+      ]
+    }
+  });
+
+  // Select the Save button element
+  const saveButton = document.getElementById('saveButton');
+
+  // Show the Save button when changes are made in the editor
+  quill.on('text-change', function() {
+    saveButton.style.display = 'inline-block'; // Show the button when changes occur
+  });
+
+  // Export to Word
+  const exportWordBtn = document.getElementById("exportWordBtn");
+  exportWordBtn.addEventListener("click", function () {
+    const transcriptHTML = quill.root.innerHTML;
+    const converted = htmlDocx.asBlob(transcriptHTML);
+    saveAs(converted, 'transcript.docx');
+  });
+});
+</script>
+  </body>
+  </html>

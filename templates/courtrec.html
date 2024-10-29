@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Court Recording Software</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+</head>
+<body>
+  <!-- Add the logo here -->
+  <div class="sidebar d-flex flex-column">
+    <!-- Logo at the top -->
+    <div class="logo-container text-center mb-4">
+      <img src="{{ url_for('static', filename='images/logojsc.png') }}" alt="Court Recording Logo" class="logo img-fluid">
+    </div>
+  
+<!-- Navigation Links -->
+<nav class="nav flex-column flex-grow-1">
+  <a class="nav-link active" href="courtrec">
+    <i class="fas fa-home me-2"></i>Dashboard
+  </a>
+  <a class="nav-link" href="recordings">
+    <i class="fas fa-microphone me-2"></i>My Recordings
+  </a>
+  <a class="nav-link" href="#">
+    <i class="fas fa-archive me-2"></i>Archives
+  </a>
+
+  <!-- Settings Menu with Collapsing Submenu -->
+  <a class="nav-link" data-bs-toggle="collapse" href="#settingsMenu" role="button" aria-expanded="false" aria-controls="settingsMenu">
+    <i class="fas fa-cog me-2"></i>Settings
+    <i class="fas fa-chevron-down float-end"></i>
+  </a>
+  <div class="collapse" id="settingsMenu">
+    <a class="nav-link ms-3" href="setup-court">
+      <i class="fas fa-gavel me-2"></i>Setup Court
+    </a>
+    <a class="nav-link ms-3" href="audio-config">
+      <i class="fas fa-volume-up me-2"></i>Audio Configurations
+    </a>
+    <a class="nav-link ms-3" href="backup">
+      <i class="fas fa-database me-2"></i>Backup
+    </a>
+  </div>
+</nav>
+  
+    <!-- Testimony logo at the bottom -->
+    <div class="testimony-logo mt-auto text-center">
+      <img src="{{ url_for('static', filename='images/testimony.png') }}" alt="testimony logo" class="logo img-fluid">
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="recording-badge" id="recordingBadge">
+      <i class="fas fa-circle me-2"></i> Recording in Progress
+    </div>
+
+    <div class="recording-visualizer">
+    
+      <div class="timer" id="recordingTimer">00:00:00</div>
+      <div class="waveform-container">
+        <div class="waveform" id="waveform"></div>
+      </div>
+    </div>
+ <!-- Trigger Button -->
+  <div class="recording-controls">
+ <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#microphoneModal">
+  <i class="fas fa-microphone me-2"></i>Add Microphone
+</button>
+</div>
+<div id="microphoneLevels" class="microphone-levels">
+  <!-- Microphone levels will be dynamically added here -->
+</div>
+
+    <div class="recording-controls">
+      <button class="btn btn-success" id="startRecord">
+        <i class="fas fa-microphone me-2"></i>Start Recording
+      </button>
+      <button class="btn btn-warning" id="pauseRecord" onclick="pauseRecording()" disabled>
+        <i class="fas fa-pause me-2"></i>Pause
+      </button>
+      <button class="btn btn-danger" id="stopRecord" onclick="stopRecording()" disabled>
+        <i class="fas fa-stop me-2"></i>Stop
+      </button>
+      <button class="btn btn-primary" onclick="playbackAudio()">
+        <i class="fas fa-play  me-2"></i>Playback
+      </button>
+    </div>
+    <div class="recording-visualizer">
+      <audio id="audioPlayback" controls style="display: block; margin: 0 auto; width: 100%;"></audio></div>
+
+      <div> <button class="btn btn-primary position-fixed top-50 end-0 translate-middle-y" type="button" data-bs-toggle="offcanvas" data-bs-target="#annotationsOffcanvas" aria-controls="annotationsOffcanvas" style="writing-mode: vertical-rl; text-orientation: mixed; padding: 1rem 0.5rem; border-radius: 0.25rem 0 0 0.25rem; display: none;" id="showAnnotationsBtn">
+        <i class="fas fa-comment-alt me-2"></i> Annotations
+      </button>
+      </div>
+    </div>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="annotationsOffcanvas" aria-labelledby="annotationsOffcanvasLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="annotationsOffcanvasLabel">Live Annotations</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <div class="mb-3">
+          <button class="btn btn-primary w-100" id="addAnnotationBtn">
+            <i class="fas fa-plus me-2"></i>Add Annotation
+          </button>
+        </div>
+        
+        <div class="input-group mb-3" id="annotationInput" style="display: none;">
+          <input type="text" class="form-control" placeholder="Enter party name (e.g., Judge, Lawyer)">
+          <input type="text" class="form-control" placeholder="Enter annotation">
+          <button class="btn btn-success" type="button" id="saveAnnotationBtn">
+            <i class="fas fa-save me-2"></i>Save
+          </button>
+          <button class="btn btn-secondary" type="button" id="cancelAnnotationBtn">
+            <i class="fas fa-times me-2"></i>Cancel
+          </button>
+        </div>
+    
+        <div id="annotationsList" class="annotations-container">
+          <!-- Annotations will be dynamically added here -->
+        </div>
+      </div>
+    </div>
+    
+    <template id="annotationTemplate">
+      <div class="annotation-item card mb-3 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="timestamp-marker badge bg-secondary"></span>
+            <div>
+              <button class="btn btn-sm btn-outline-primary me-1 edit-btn">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger delete-btn">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="annotation-text mb-0">
+            <span class="party-name badge bg-success me-1"></span> 
+            <span class="annotation-content"></span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <div class="recordings-table mt-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+          <h5 id="recent-recordings" class="mb-0">Recent Recordings</h5>
+          <div class="d-flex gap-2">
+              <select id="recordingsPerPage" class="form-select form-select-sm" style="width: auto;">
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="all">All</option>
+              </select>
+              <button class="btn btn-outline-success btn-sm" id="filterBtn">
+                <i class="fas fa-filter me-2"></i>Filter
+              </button>
+              <button class="btn btn-outline-success btn-sm">
+              <i class="fas fa-download me-2"></i>Export
+            </button>
+          </div>
+      </div>
+      
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Case Details</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Size</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="recordingsTableBody">
+          <!-- Recordings will be dynamically added here -->
+        </tbody>
+      </table>
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="pagination-info">
+            Showing <span id="startRecord">1</span> to <span id="endRecord">10</span> of <span id="totalRecords">0</span> entries
+        </div>
+        <nav aria-label="Recordings pagination">
+            <ul class="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+<div class="offcanvas offcanvas-end" tabindex="-1" id="annotationsOffcanvas" aria-labelledby="annotationsOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="annotationsOffcanvasLabel">Live Annotations</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="mb-3">
+      <button class="btn btn-primary w-100" id="addAnnotationBtn">
+        <i class="fas fa-plus me-2"></i>Add Annotation
+      </button>
+    </div>
+    
+    <div class="input-group mb-3" id="annotationInput" style="display: none;">
+      <input type="text" class="form-control" placeholder="Enter party name (e.g., Judge, Lawyer)">
+      <input type="text" class="form-control" placeholder="Enter annotation">
+      <button class="btn btn-success" type="button" id="saveAnnotationBtn">
+        <i class="fas fa-save me-2"></i>Save
+      </button>
+      <button class="btn btn-secondary" type="button" id="cancelAnnotationBtn">
+        <i class="fas fa-times me-2"></i>Cancel
+      </button>
+    </div>
+
+    <div id="annotationsList" class="annotations-container">
+      <!-- Annotations will be dynamically added here -->
+    </div>
+  </div>
+</div>
+
+<template id="annotationTemplate">
+  <div class="annotation-item card mb-3 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="timestamp-marker badge bg-secondary"></span>
+        <div>
+          <button class="btn btn-sm btn-outline-primary me-1 edit-btn">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger delete-btn">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+      <div class="annotation-text mb-0">
+        <span class="party-name badge bg-success me-1"></span> 
+        <span class="annotation-content"></span>
+      </div>
+    </div>
+  </div>
+</template>
+</div>
+
+
+  <!-- Case Details Modal -->
+  <div class="modal fade" id="caseDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Enter Case Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="caseDetailsForm" class="case-details-form">
+            <div class="form-floating">
+              <input type="text" class="form-control" id="caseNumber" placeholder="Case Number" required>
+              <label for="caseNumber">Case Number</label>
+            </div>
+            <div class="form-floating">
+              <input type="text" class="form-control" id="judgeName" placeholder="Judge Name" required>
+              <label for="judgeName">Judge Name</label>
+            </div>
+            <div class="form-floating">
+              <input type="text" class="form-control" id="prosecutionCounsel" placeholder="Prosecution Counsel" required>
+              <label for="prosecutionCounsel">Prosecution Counsel</label>
+            </div>
+            <div class="form-floating">
+              <input type="text" class="form-control" id="defenseCounsel" placeholder="Defense Counsel" required>
+              <label for="defenseCounsel">Defense Counsel</label>
+            </div>
+            <div class="form-floating">
+              <textarea class="form-control" id="caseNotes" placeholder="Case Notes" style="height: 100px"></textarea>
+              <label for="caseNotes">Case Notes</label>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="startRecordingBtn">Start Recording</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ <!-- Add Microphone Modal -->
+<div class="modal fade" id="microphoneModal" tabindex="-1" aria-labelledby="microphoneModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="microphoneModalLabel">Microphone Configuration</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="microphoneContainer">
+          <div class="mic-section">
+            <div class="mic-header">
+              <h6>Microphone Input</h6>
+              <div>
+                <i class="fas fa-check-circle confirm-mic me-2"></i>
+                <i class="fas fa-times-circle remove-mic"></i>
+              </div>
+            </div>
+            <select class="form-select mb-3" id="micSelect">
+              <option selected disabled>Select audio input device...</option>
+              <!-- Options will be populated dynamically -->
+            </select>
+            <div class="label-input">
+              <input type="text" class="form-control" placeholder="Enter microphone label" id="micLabel">
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline-primary" id="addMicrophoneBtn">
+          <i class="fas fa-plus me-2"></i>Add Another Microphone
+        </button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="saveMicrophoneConfig">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Media Player Modal -->
+  <div class="modal fade" id="playerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="playerModalTitle">Recording Playback</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="media-player">
+            <div class="d-flex justify-content-between mb-2">
+              <span id="currentTime">00:00:00</span>
+              <span id="totalTime">00:00:00</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" id="playbackProgress"></div>
+            </div>
+            <div class="player-controls">
+              <button class="btn btn-link">
+                <i class="fas fa-step-backward"></i>
+              </button>
+              <button class="btn btn-primary rounded-circle">
+                <i class="fas fa-play"></i>
+              </button>
+              <button class="btn btn-link">
+                <i class="fas fa-step-forward"></i>
+              </button>
+              <button class="btn btn-link">
+                <i class="fas fa-volume-up"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="annotations-section">
+            <h6>Annotations</h6>
+            <div class="input-group mb-3">
+              <input type="text" class="form-control" placeholder="Add annotation...">
+              <button class="btn btn-outline-primary">
+                <i class="fas fa-plus"></i>
+                <button class="btn btn-outline-primary">
+                  <i class="fas fa-plus"></i> Add
+                </button>
+              </div>
+              <div class="annotations-container" id="annotationsList">
+                <!-- Annotations will be added here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+  // Global variables to track recording state
+  let recordingStartTime = null;
+  let currentCaseDetails = null;
+  let timerInterval = null;
+  let waveformInterval = null;
+  let micLevelsInterval = null;
+  const recordings = [];
+
+      let audioBlob;
+  
+
+  // Initialize waveform
+  const waveform = document.getElementById('waveform');
+  const bars = 100;
+  for (let i = 0; i < bars; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'waveform-bar';
+    waveform.appendChild(bar);
+  }
+
+  // Utility functions
+  function formatTime(ms) {
+    if (!ms) return '00:00:00';
+    const date = new Date(ms);
+    return date.toISOString().substr(11, 8);
+  }
+
+  function formatFileSize(bytes) {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    if (bytes === 0) return '0 Byte';
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+    return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+  }
+
+  function generateRandomFileSize() {
+    return Math.floor(Math.random() * 1000000000); // Random size up to 1GB
+  }
+
+  // Update waveform visualization
+  function updateWaveform() {
+    const waveformBars = document.querySelectorAll('.waveform-bar');
+    waveformBars.forEach(bar => {
+      const height = Math.random() * 100;
+      bar.style.height = `${height}%`;
+    });
+  }
+
+  // Function to update simulated microphone levels
+  function updateMicrophoneLevels() {
+    activeMics.forEach((mic, index) => {
+      const micLevel = Math.random() * 100; // Simulated mic level
+      document.querySelector(`#micLevel-${index}`).style.width = `${micLevel}%`;
+    });
+  }
+
+  function updateTimer() {
+    if (recordingStartTime) {
+      const elapsed = Date.now() - recordingStartTime;
+      document.getElementById('recordingTimer').textContent = formatTime(elapsed);
+    }
+  }
+
+  // Recording table management
+  function addRecordingToTable(recordingData) {
+    const tbody = document.getElementById('recordingsTableBody');
+    const row = document.createElement('tr');
+
+    const duration = formatTime(recordingData.duration);
+    const fileSize = formatFileSize(recordingData.fileSize);
+
+    row.innerHTML = `
+      <td>${recordingData.timestamp}</td>
+      <td>
+        <div><strong>${recordingData.caseNumber}</strong></div>
+        <small class="text-muted">Judge ${recordingData.judgeName}</small>
+      </td>
+      <td>${duration}</td>
+      <td><span class="status-badge bg-success text-white">Complete</span></td>
+      <td>${fileSize}</td>
+      <td>
+        <div class="recording-actions">
+          <button class="action-btn" onclick="playRecording('${recordingData.caseNumber}')">
+            <i class="fas fa-play"></i>
+          </button>
+          <button class="action-btn" onclick="downloadRecording('${recordingData.caseNumber}')">
+            <i class="fas fa-download"></i>
+          </button>
+          <button class="action-btn" onclick="editRecording('${recordingData.caseNumber}')">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="action-btn text-danger" onclick="deleteRecording('${recordingData.caseNumber}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    `;
+
+    tbody.insertBefore(row, tbody.firstChild);
+  }
+
+  // Recording actions
+  function playRecording(caseNumber) {
+    const recording = recordings.find(r => r.caseNumber === caseNumber);
+    if (recording) {
+      document.getElementById('playerModalTitle').textContent = `Case ${recording.caseNumber} Recording`;
+      document.getElementById('totalTime').textContent = formatTime(recording.duration);
+      const playerModal = new bootstrap.Modal(document.getElementById('playerModal'));
+      playerModal.show();
+    }
+  }
+
+  function downloadRecording(caseNumber) {
+    alert(`Downloading recording for case ${caseNumber}`);
+  }
+
+  function editRecording(caseNumber) {
+    alert(`Editing recording for case ${caseNumber}`);
+  }
+
+  function deleteRecording(caseNumber) {
+    if (confirm(`Are you sure you want to delete the recording for case ${caseNumber}?`)) {
+      const row = document.querySelector(`tr[data-case="${caseNumber}"]`);
+      if (row) row.remove();
+    }
+  }
+
+  // Start recording process
+  document.getElementById('startRecord').addEventListener('click', function() {
+    const modal = new bootstrap.Modal(document.getElementById('caseDetailsModal'));
+    modal.show();
+  });
+
+  // Handle form submission and recording start
+  document.getElementById('startRecordingBtn').addEventListener('click', function() {
+    const form = document.getElementById('caseDetailsForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Collect case details
+    currentCaseDetails = {
+        caseNumber: document.getElementById('caseNumber').value,
+        judgeName: document.getElementById('judgeName').value,
+        prosecutionCounsel: document.getElementById('prosecutionCounsel').value,
+        defenseCounsel: document.getElementById('defenseCounsel').value,
+        notes: document.getElementById('caseNotes').value,
+        timestamp: new Date().toLocaleString()
+    };
+
+    // Close modal and start recording
+    const modal = bootstrap.Modal.getInstance(document.getElementById('caseDetailsModal'));
+    modal.hide();
+
+    // Initialize recording state
+    recordingStartTime = Date.now();
+    document.getElementById('recordingBadge').style.display = 'block';
+    document.getElementById('startRecord').disabled = true;
+    document.getElementById('pauseRecord').disabled = false;
+    document.getElementById('stopRecord').disabled = false;
+
+    // Start all intervals
+    waveformInterval = setInterval(updateWaveform, 100);
+    micLevelsInterval = setInterval(updateMicrophoneLevels, 100);
+    timerInterval = setInterval(updateTimer, 1000);
+
+    // Start recording
+    startRecording()
+});
+
+// Function to start recording audio
+
+
+
+// Set a global flag to track the paused state
+let isPaused = false;
+
+document.getElementById('pauseRecord').addEventListener('click', function() {
+  const startButton = document.getElementById('startRecord');
+  isPaused = !isPaused;
+   // Call the function to pause or resume recording
+   pauseRecordings(isPaused);
+ 
+ 
+});
+
+// Function to pause or resume recording
+function pauseRecordings(isPaused) {
+  const startButton = document.getElementById('startRecord');
+  console.log(isPaused); // Log the paused state for debugging
+
+  if (isPaused) {
+    // Pause recording
+    startButton.disabled = true;
+    document.getElementById('pauseRecord').innerHTML = '<i class="fas fa-play me-2"></i>Resume';
+    document.getElementById('recordingBadge').style.display = 'none';
+
+    // Clear intervals to pause updates
+    clearInterval(waveformInterval);
+    clearInterval(micLevelsInterval);
+    clearInterval(timerInterval);
+  } else {
+    // Resume recording
+    startButton.disabled = false;
+    document.getElementById('pauseRecord').innerHTML = '<i class="fas fa-pause me-2"></i>Pause';
+    document.getElementById('recordingBadge').style.display = 'block';
+
+    // Restart intervals for waveform, mic levels, and timer
+    waveformInterval = setInterval(updateWaveform, 100);
+    micLevelsInterval = setInterval(updateMicrophoneLevels, 100);
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+}
+
+
+document.getElementById('stopRecord').addEventListener('click', function() {
+    // Calculate recording duration
+    const duration = Date.now() - recordingStartTime;
+   // const fileSize = audioBlob.size; 
+    // Create a recording entry with all necessary details
+    const recordingData = {
+        ...currentCaseDetails, // Include current case details
+        timestamp: new Date().toLocaleString(), // Capture the current timestamp
+        duration: duration, // Calculate the duration of the recording
+        //fileSize: formatFileSize(fileSize), // Ensure this function generates a random file size
+    };
+
+    // Add the recording data to the recordings array
+    recordings.push(recordingData);
+
+    // Update the UI by adding the recording to the table
+    addRecordingToTable(recordingData); // Ensure this function updates the UI with new data
+
+    // Reset recording state by clearing intervals
+    clearInterval(waveformInterval);
+    clearInterval(micLevelsInterval);
+    clearInterval(timerInterval);
+
+    // Update UI elements
+    document.getElementById('recordingBadge').style.display = 'none'; // Hide recording badge
+    document.getElementById('recordingTimer').textContent = '00:00:00'; // Reset timer display
+    document.getElementById('startRecord').disabled = false; // Enable the start button
+    document.getElementById('pauseRecord').disabled = true; // Disable pause button
+    document.getElementById('stopRecord').disabled = true; // Disable stop button
+
+    // Reset the form but keep currentCaseDetails for the next recording
+    document.getElementById('caseDetailsForm').reset(); // Reset the form fields
+    recordingStartTime = null; // Clear the recording start time
+ 
+    // Call the function to save audio with metadata
+    saveMetadataSeparately(recordingData);
+});
+ 
+
+// Function to save audio and metadata separately
+function saveMetadataSeparately( metadata) {
+   
+    // Convert metadata object to string for saving as text
+    const metadataString = `Case Number: ${metadata.caseNumber}\nJudge Name: ${metadata.judgeName}\nProsecution Counsel: ${metadata.prosecutionCounsel}\nDefense Counsel: ${metadata.defenseCounsel}\nNotes: ${metadata.notes}\nTimestamp: ${metadata.timestamp}\nDuration: ${metadata.duration} ms\nFile Size: ${metadata.fileSize} bytes`;
+
+    // Create a blob object with the metadata
+    const metadataBlob = new Blob([metadataString], { type: "text/plain" }); // Save as text file
+
+    // Create a formatted timestamp for filenames
+    const timestamp = new Date().toISOString().replace(/:/g, '-'); // Replace ":" to avoid issues in filenames
+    const metadataFileName = `metadata_${timestamp}.txt`; // Metadata file name
+
+
+
+    // Create download link for metadata
+    const metadataUrl = URL.createObjectURL(metadataBlob);
+    const metadataLink = document.createElement("a");
+    metadataLink.href = metadataUrl;
+    metadataLink.download = metadataFileName; // Set the metadata file download name
+    document.body.appendChild(metadataLink);
+    metadataLink.click(); // Trigger the download
+    document.body.removeChild(metadataLink); // Remove the link after downloading
+
+   
+}
+
+  // Media player functionality
+  let playbackInterval;
+  document.querySelector('#playerModal .btn-primary').addEventListener('click', function() {
+    const progressBar = document.getElementById('playbackProgress');
+    const icon = this.querySelector('i');
+
+    if (icon.classList.contains('fa-play')) {
+      icon.classList.replace('fa-play', 'fa-pause');
+      playbackInterval = setInterval(() => {
+        const currentWidth = parseFloat(progressBar.style.width) || 0;
+        if (currentWidth < 100) {
+          progressBar.style.width = (currentWidth + 0.1) + '%';
+          document.getElementById('currentTime').textContent =
+            formatTime(currentWidth * parseFloat(document.getElementById('totalTime').textContent.split(':').reduce((acc, time) => (60 * acc) + parseFloat(time))) / 100);
+        }
+      }, 100);
+    } else {
+      icon.classList.replace('fa-pause', 'fa-play');
+      clearInterval(playbackInterval);
+    }
+  });
+
+  // Clean up on modal close
+  document.getElementById('playerModal').addEventListener('hidden.bs.modal', function () {
+    clearInterval(playbackInterval);
+    const playButton = this.querySelector('.btn-primary i');
+    if (playButton.classList.contains('fa-pause')) {
+      playButton.classList.replace('fa-pause', 'fa-play');
+    }
+    document.getElementById('playbackProgress').style.width = '0%';
+    document.getElementById('currentTime').textContent = '00:00:00';
+  });
+
+  // Handle microphone configuration modal
+  let activeMics = [];
+
+  // Function to dynamically add a new microphone section
+  function createMicrophoneSection() {
+    const micContainer = document.getElementById('microphoneContainer');
+    const micSection = document.createElement('div');
+    micSection.classList.add('mic-section', 'mb-3');
+    micSection.innerHTML = `
+      <div class="mic-header">
+        <h6>Microphone Input</h6>
+        <div>
+          <i class="fas fa-check-circle confirm-mic me-2"></i>
+          <i class="fas fa-times-circle remove-mic"></i>
+        </div>
+      </div>
+      <select class="form-select mb-3">
+        <option selected disabled>Select audio input device...</option>
+      </select>
+      <div class="label-input">
+        <input type="text" class="form-control" placeholder="Enter microphone label">
+      </div>
+    `;
+    micContainer.appendChild(micSection);
+  }
+
+  // Add new microphone section in modal
+  document.getElementById('addMicrophoneBtn').addEventListener('click', function() {
+    createMicrophoneSection();
+    populateDeviceDropdowns();  // Ensure devices are populated in the new section
+  });
+
+  // Save selected mics
+  document.getElementById('saveMicrophoneConfig').addEventListener('click', function() {
+    document.querySelectorAll('.mic-section').forEach((section, index) => {
+      const micSelect = section.querySelector('select');
+      const micLabel = section.querySelector('.label-input input').value;
+
+      if (micSelect.value !== 'Select audio input device...' && micLabel) {
+        activeMics.push({ id: micSelect.value, label: micLabel });
+      }
+    });
+    displayActiveMics();
+    const modal = bootstrap.Modal.getInstance(document.getElementById('microphoneModal'));
+    modal.hide();
+  });
+
+  // Display active microphones in 4x4 grid
+  function displayActiveMics() {
+    const micLevelsContainer = document.querySelector('.microphone-levels');
+    micLevelsContainer.innerHTML = ''; // Clear previous entries
+    activeMics.forEach((mic, index) => {
+      const micChannel = `
+        <div class="mic-channel">
+          <div class="d-flex justify-content-between">
+            <h6>${mic.label}</h6>
+            <span class="badge bg-success">Active</span>
+          </div>
+          <div class="level-meter">
+            <div class="level-fill" id="micLevel-${index}"></div>
+          </div>
+        </div>
+      `;
+      micLevelsContainer.insertAdjacentHTML('beforeend', micChannel);
+    });
+  }
+
+  // Populate mic dropdowns
+  async function populateDeviceDropdowns() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const selects = document.querySelectorAll('.mic-section select');
+    selects.forEach(select => {
+      while (select.options.length > 1) {
+        select.remove(1);
+      }
+      devices.filter(device => device.kind === 'audioinput').forEach(device => {
+        const option = new Option(device.label || `Mic ${device.deviceId.slice(0, 5)}`, device.deviceId);
+        select.add(option);
+      });
+    });
+  }
+
+
+
+
+  // Stop recording
+  document.getElementById('stopRecord').addEventListener('click', () => {
+  
+    document.getElementById('stopRecord').disabled = true;
+    document.getElementById('startRecord').disabled = false;
+
+    clearInterval(micLevelsInterval);  // Stop mic level updates
+  });
+
+  // Event listeners for the modal
+  const microphoneModal = document.getElementById('microphoneModal');
+  microphoneModal.addEventListener('show.bs.modal', function() {
+    populateDeviceDropdowns();
+  });
+</script>
+
+
+<script>
+  function startRecording() {
+    const caseNumber = currentCaseDetails.caseNumber;
+    const notes = currentCaseDetails.notes;
+    const dateStamp = currentCaseDetails.timestamp; 
+	const defenseCounsel = currentCaseDetails.defenseCounsel;
+	const prosecutionCounsel = currentCaseDetails.prosecutionCounsel
+	const judgeName = currentCaseDetails.judgeName;
+    fetch("/start", { method: "POST" ,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          caseNumber: caseNumber,
+    title: "",
+    notes: notes,
+    annotations: annotationsArray,
+    dateStamp: dateStamp,
+	judgeName: judgeName,
+	prosecutionCounsel:prosecutionCounsel,
+	defenseCounsel:defenseCounsel,
+	courtroom: "",
+	transcript: "",
+	duration: "",
+	size: "",
+	status: ""
+        }),})
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data.message);
+      });
+  }
+
+  function pauseRecording() {
+    fetch("/pause", { method: "POST" })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data.message);
+      });
+  }
+
+  function stopRecording() {
+    const caseNumber = currentCaseDetails.caseNumber;
+    const notes = currentCaseDetails.notes;
+    const dateStamp = currentCaseDetails.timestamp; 
+	const defenseCounsel = currentCaseDetails.defenseCounsel;
+	const prosecutionCounsel = currentCaseDetails.prosecutionCounsel
+	const judgeName = currentCaseDetails.judgeName;
+    fetch("/stop", { method: "POST" ,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          caseNumber: caseNumber,
+    title: "",
+    notes: notes,
+    annotations: annotationsArray,
+    dateStamp: dateStamp,
+	judgeName: judgeName,
+	prosecutionCounsel:prosecutionCounsel,
+	defenseCounsel:defenseCounsel,
+	courtroom: "",
+	transcript: "",
+	duration: "",
+	size: "",
+	status: ""
+        }),})
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data.message);
+      });
+  }
+
+  function playbackAudio() {
+    const audioElement = document.getElementById("audioPlayback");
+    audioElement.src = "/playback";
+    audioElement.play();
+  }
+</script>
+<script>
+  // Live annotations in off canvas script
+  let annotationsArray = [];
+
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const startRecordBtn = document.getElementById('startRecord');
+    const pauseRecordBtn = document.getElementById('pauseRecord');
+    const stopRecordBtn = document.getElementById('stopRecord');
+    const showAnnotationsBtn = document.getElementById('showAnnotationsBtn');
+    const addAnnotationBtn = document.getElementById('addAnnotationBtn');
+    const annotationInput = document.getElementById('annotationInput');
+    const saveAnnotationBtn = document.getElementById('saveAnnotationBtn');
+    const cancelAnnotationBtn = document.getElementById('cancelAnnotationBtn');
+    const annotationsList = document.getElementById('annotationsList');
+    const annotationTemplate = document.getElementById('annotationTemplate');
+    const recordingTimer = document.getElementById('recordingTimer');
+
+    let isRecording = false;
+    let recordingStartTime;
+    let currentTime = '00:00:00';
+    let timerInterval;
+
+    const annotationsOffcanvas = new bootstrap.Offcanvas(document.getElementById('annotationsOffcanvas'));
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(event) {
+      if (event.ctrlKey && event.key === 'j') {
+        event.preventDefault();
+        openAnnotationInput('Judge');
+      } else if (event.ctrlKey && event.key === 'n') {
+        event.preventDefault();
+        openAnnotationInput();
+      }
+    });
+
+    function openAnnotationInput(party = '') {
+      annotationInput.style.display = 'flex';
+      addAnnotationBtn.style.display = 'none';
+      if (party) {
+        annotationInput.querySelector('input[type="text"]').value = party;
+      } else {
+        annotationInput.querySelector('input[type="text"]').value = '';
+      }
+      annotationInput.querySelector('input[type="text"]').focus();
+    }
+
+    startRecordBtn.addEventListener('click', function() {
+      console.log("gfh");
+      isRecording = true;
+      recordingStartTime = Date.now();
+      startRecordBtn.disabled = true;
+      pauseRecordBtn.disabled = false;
+      stopRecordBtn.disabled = false;
+      showAnnotationsBtn.style.display = 'block';
+      startTimer();
+      animateButton(this);
+    });
+
+    pauseRecordBtn.addEventListener('click', function() {
+      if (isRecording) {
+        isRecording = false;
+        clearInterval(timerInterval);
+        this.innerHTML = '<i class="fas fa-play me-2"></i>Resume';
+        this.classList.remove('btn-warning');
+        this.classList.add('btn-success');
+      } else {
+        isRecording = true;
+        recordingStartTime = Date.now() - parseTime(currentTime) * 1000;
+        startTimer();
+        this.innerHTML = '<i class="fas fa-pause me-2"></i>Pause';
+        this.classList.remove('btn-success');
+        this.classList.add('btn-warning');
+      }
+      animateButton(this);
+    });
+
+    stopRecordBtn.addEventListener('click', function() {
+      isRecording = false;
+      clearInterval(timerInterval);
+      startRecordBtn.disabled = false;
+      pauseRecordBtn.disabled = true;
+      stopRecordBtn.disabled = true;
+      showAnnotationsBtn.style.display = 'none';
+      annotationsOffcanvas.hide();
+      resetTimer();
+      animateButton(this);
+    });
+
+    addAnnotationBtn.addEventListener('click', function() {
+      openAnnotationInput();
+      animateButton(this);
+    });
+
+    cancelAnnotationBtn.addEventListener('click', function() {
+      annotationInput.style.display = 'none';
+      addAnnotationBtn.style.display = 'block';
+      annotationInput.querySelector('input[type="text"]').value = '';
+      annotationInput.querySelector('input[type="text"]').nextElementSibling.value = '';
+      animateButton(this);
+    });
+
+    saveAnnotationBtn.addEventListener('click', function() {
+      const partyName = annotationInput.querySelector('input[type="text"]').value.trim();
+      const annotationText = annotationInput.querySelector('input[type="text"]').nextElementSibling.value.trim();
+      if (partyName && annotationText) {
+        addAnnotation(currentTime, partyName, annotationText);
+        annotationInput.querySelector('input[type="text"]').value = '';
+        annotationInput.querySelector('input[type="text"]').nextElementSibling.value = '';
+        annotationInput.style.display = 'none';
+        addAnnotationBtn.style.display = 'block';
+      }
+      animateButton(this);
+    });
+
+    function addAnnotation(timestamp, party, text) {
+  // Push annotation to the array
+  annotationsArray.push({ timestamp, party, text });
+
+  const newAnnotation = annotationTemplate.content.cloneNode(true);
+  newAnnotation.querySelector('.timestamp-marker').textContent = timestamp;
+  newAnnotation.querySelector('.annotation-text').textContent = `${party}: "${text}"`;
+
+  // Editing and deleting logic...
+  const editBtn = newAnnotation.querySelector('.edit-btn');
+  const deleteBtn = newAnnotation.querySelector('.delete-btn');
+
+  editBtn.addEventListener('click', function() {
+    const annotationItem = this.closest('.annotation-item');
+    const annotationText = annotationItem.querySelector('.annotation-text');
+    const newText = prompt('Edit annotation:', annotationText.textContent);
+    if (newText !== null) {
+      annotationText.textContent = newText;
+      animateAnnotation(annotationItem);
+    }
+  });
+
+  deleteBtn.addEventListener('click', function() {
+    if (confirm('Are you sure you want to delete this annotation?')) {
+      const annotationItem = this.closest('.annotation-item');
+      annotationItem.style.animation = 'fadeOutRight 0.3s';
+      annotationItem.addEventListener('animationend', () => {
+        annotationItem.remove();
+      });
+    }
+  });
+
+  const annotationItem = newAnnotation.querySelector('.annotation-item');
+  annotationItem.style.animation = 'fadeInLeft 0.3s';
+  annotationsList.prepend(newAnnotation);
+}
+
+    function startTimer() {
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+      const elapsedTime = Date.now() - recordingStartTime;
+      currentTime = formatTime(Math.floor(elapsedTime / 1000));
+      recordingTimer.textContent = currentTime;
+    }
+
+    function resetTimer() {
+      currentTime = '00:00:00';
+      recordingTimer.textContent = currentTime;
+    }
+
+    function formatTime(totalSeconds) {
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return [hours, minutes, seconds]
+        .map(v => v < 10 ? "0" + v : v)
+        .join(":");
+    }
+
+    function parseTime(timeString) {
+      const [hours, minutes, seconds] = timeString.split(':').map(Number);
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+
+    function animateButton(button) {
+      button.classList.add('animate');
+      setTimeout(() => button.classList.remove('animate'), 500);
+    }
+
+    function animateAnnotation(annotation) {
+      annotation.style.animation = 'pulse 0.5s';
+      setTimeout(() => annotation.style.animation = '', 500);
+    }
+  });
+</script>
+  </body>
+  </html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Sound Recorder</title>
+  <style>
+    canvas {
+      width: 100%;
+      height: 150px;
+      background-color: #f0f0f0;
+    }
+    button {
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live Sound Recorder with Waveform Visualization</h1>
+
+  <!-- Buttons for controlling recording -->
+  <button id="startRecord">Start Recording</button>
+  <button id="stopRecord">Stop Recording</button>
+
+  <!-- Canvas for waveform visualization -->
+  <canvas id="waveformCanvas"></canvas>
+
+  <!-- Audio playback for recorded sound -->
+  <audio id="audioPlayback" controls></audio>
+
+  <script>
+    let mediaRecorder;
+    let recordedChunks = [];
+    let audioContext;
+    let analyser;
+    let dataArray;
+    let bufferLength;
+
+    const startButton = document.getElementById('startRecord');
+    const stopButton = document.getElementById('stopRecord');
+    const audioPlayback = document.getElementById('audioPlayback');
+    const canvas = document.getElementById('waveformCanvas');
+    const canvasCtx = canvas.getContext('2d');
+
+    startButton.addEventListener('click', startRecording);
+    stopButton.addEventListener('click', stopRecording);
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        // Set up audio context and analyser for waveform visualization
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        source.connect(analyser);
+
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        // Activate MediaRecorder for recording
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (e) => {
+          recordedChunks.push(e.data);
+        };
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          const audioURL = window.URL.createObjectURL(blob);
+          audioPlayback.src = audioURL; // Playback the recording
+        };
+        mediaRecorder.start();
+
+        // Start visualizing the waveform
+        visualize();
+      }).catch(err => {
+        console.error('Microphone access denied', err);
+      });
+    }
+
+    function stopRecording() {
+      if (mediaRecorder) {
+        mediaRecorder.stop();
+      }
+    }
+
+    function visualize() {
+      function draw() {
+        requestAnimationFrame(draw);
+
+        analyser.getByteTimeDomainData(dataArray);
+
+        canvasCtx.fillStyle = 'rgb(200, 200, 200)';
+        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = 'rgb(0, 0, 0)';
+
+        canvasCtx.beginPath();
+        const sliceWidth = canvas.width / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = v * canvas.height / 2;
+
+          if (i === 0) {
+            canvasCtx.moveTo(x, y);
+          } else {
+            canvasCtx.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+
+        canvasCtx.lineTo(canvas.width, canvas.height / 2);
+        canvasCtx.stroke();
+      }
+
+      draw();
+    }
+  </script>
+</body>
+</html>
