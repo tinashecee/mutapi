@@ -13,7 +13,13 @@ from datetime import datetime
 
 app = Flask(__name__)
 
+# Connect to the SQLite database
+DATABASE = 'MutapiAudioRecordings.db'
 
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # Get the user's Documents folder and ensure 'Mutapi' folder exists
 documents_folder = os.path.join(os.path.expanduser("~"), "Documents", "Mutapi")
@@ -179,14 +185,17 @@ def start_recording():
         size = data['size']
         status = data['status']
         
+        # Set the base path for the 'static' folder
+        static_folder = os.path.join(os.getcwd(), 'static/audio')
+
         # Sanitize the dateStamp by replacing invalid characters for a file name
         safe_dateStamp = dateStamp.replace(":", "-").replace("/", "-").replace(",", "")
 
         # Construct the file name using the case number, notes, and sanitized date stamp
         file_name = f"{caseNumber}_{notes}_{safe_dateStamp}.wav"
-        
-        # Save the file to the 'Mutapi' folder in Documents
-        file_path = os.path.join(documents_folder, file_name)
+
+        # Save the file to the 'static' folder
+        file_path = os.path.join(static_folder, file_name)
 
         # Start recording and save to the constructed file path
         recorder.start_recording(file_path)
@@ -200,7 +209,28 @@ def pause_recording():
         recorder.pause_recording()
         return jsonify({'message': 'Recording paused' if recorder.is_paused else 'Recording resumed'})
     return jsonify({'message': 'No recording to pause/resume'})
+# Route to save updated annotations
+@app.route('/save-annotations/<int:recording_id>', methods=['POST'])
+def save_annotations(recording_id):
+    data = request.get_json()
+    updated_annotations = data.get('annotations')
 
+    if not updated_annotations:
+        return jsonify({'error': 'No annotations provided'}), 400
+        
+
+    conn = get_db_connection()
+    try:
+        # Update the annotations for the specified recording ID
+        conn.execute('UPDATE case_recordings SET annotations = ? WHERE id = ?', (updated_annotations, recording_id))
+        conn.commit()
+        response = {'success': True, 'message': 'Annotations updated successfully'}
+    except Exception as e:
+        response = {'success': False, 'message': str(e)}
+    finally:
+        conn.close()
+
+    return jsonify(response)
 @app.route('/stop', methods=['POST'])
 def stop_recording():
     if recorder.is_recording:
@@ -240,7 +270,7 @@ def insert_case_recording(data, duration, size):
 
       # Construct the file name using the case number, notes, and sanitized date stamp
     file_name = f"{case_number}_{notes}_{safe_dateStamp}.wav"
-    file_path = os.path.join(documents_folder, file_name)
+    file_path = file_name
 
    
     # Insert data into SQLite
